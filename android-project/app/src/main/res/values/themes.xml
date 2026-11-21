@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.NeonClash" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowBackground">#07090D</item>
+    </style>
+</resources>
