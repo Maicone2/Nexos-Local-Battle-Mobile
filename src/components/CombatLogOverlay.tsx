@@ -164,6 +164,8 @@ export function CombatLogOverlay({
                   ? `Modo LAN · Jogador ${lanSlot}`
                   : mode === 'local2p'
                   ? 'Modo Local 1v1'
+                  : mode === 'tournament'
+                  ? 'Torneio Local'
                   : mode === 'vs_cpu'
                   ? 'Modo 1v1 vs CPU'
                   : mode === 'combo_trials'
@@ -251,7 +253,7 @@ export function CombatLogOverlay({
           {/* Paginated Log or Input History (Zero Scroll) */}
           {activeTab === 'inputs' ? (
             <div className="space-y-1.5">
-              {mode === 'local2p' && (
+              {(mode === 'local2p' || mode === 'tournament') && (
                 <div className="grid grid-cols-2 gap-1 text-[10px]">
                   <button
                     type="button"

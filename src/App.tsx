@@ -12,6 +12,8 @@ import { ReplayModal } from './components/ReplayModal';
 import { SettingsScreen } from './components/SettingsScreen';
 import { StageSelect } from './components/StageSelect';
 import { TitleScreen } from './components/TitleScreen';
+import { TournamentBracketScreen } from './components/TournamentBracketScreen';
+import { TournamentSetupScreen } from './components/TournamentSetupScreen';
 import { audioManager } from './game/AudioManager';
 import {
   DEFAULT_FIGHTER_APPEARANCE,
@@ -27,6 +29,18 @@ import {
   resetLocalSessionStats,
   saveLocalSessionStats,
 } from './game/sessionStats';
+import {
+  createDefaultTournamentParticipants,
+  createTournamentBracket,
+  getCurrentTournamentMatch,
+  getTournamentRoundLabel,
+  recordTournamentMatchWinner,
+  resizeTournamentParticipants,
+  shuffleTournamentParticipants,
+  TournamentParticipant,
+  TournamentSize,
+  TournamentState,
+} from './game/tournament';
 import {
   FighterId,
   GameMode,
@@ -101,6 +115,11 @@ export default function App() {
   const [localSessionStats, setLocalSessionStats] = useState<LocalSessionRecord>(() =>
     loadLocalSessionStats()
   );
+  const [tournamentSize, setTournamentSize] = useState<TournamentSize>(4);
+  const [tournamentParticipants, setTournamentParticipants] = useState<TournamentParticipant[]>(() =>
+    createDefaultTournamentParticipants(4)
+  );
+  const [tournamentState, setTournamentState] = useState<TournamentState | null>(null);
 
   // LAN state
   const [lanStatus, setLanStatus] = useState<LanConnectionStatus>('disconnected');
@@ -358,11 +377,91 @@ export default function App() {
           setMode(selected);
           if (selected === 'lan') {
             setScreen('lan_menu');
+          } else if (selected === 'tournament') {
+            setScreen('tournament_setup');
           } else {
             setScreen('char_select');
           }
         }}
         onBack={() => {
+          audioManager.playUiClick();
+          setScreen('menu');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'tournament_setup') {
+    return (
+      <TournamentSetupScreen
+        size={tournamentSize}
+        participants={tournamentParticipants}
+        stage={stage}
+        onChangeSize={(nextSize) => {
+          audioManager.playUiClick();
+          setTournamentSize(nextSize);
+          setTournamentParticipants((prev) => resizeTournamentParticipants(prev, nextSize));
+        }}
+        onUpdateParticipant={(idx, patch) => {
+          setTournamentParticipants((prev) =>
+            prev.map((p, i) => (i === idx ? { ...p, ...patch } : p))
+          );
+        }}
+        onShuffle={() => {
+          audioManager.playUiClick();
+          setTournamentParticipants((prev) => shuffleTournamentParticipants(prev));
+        }}
+        onSelectStage={(nextStage) => {
+          audioManager.playUiClick();
+          setStage(nextStage);
+        }}
+        onStartTournament={() => {
+          audioManager.playUiClick();
+          const bracket = createTournamentBracket(
+            tournamentParticipants.slice(0, tournamentSize),
+            stage
+          );
+          setTournamentState(bracket);
+          setScreen('tournament_bracket');
+        }}
+        onBack={() => {
+          audioManager.playUiClick();
+          setScreen('mode_select');
+        }}
+      />
+    );
+  }
+
+  if (screen === 'tournament_bracket' && tournamentState) {
+    const activeMatch = getCurrentTournamentMatch(tournamentState);
+    return (
+      <TournamentBracketScreen
+        tournament={tournamentState}
+        onStartNextMatch={() => {
+          if (!activeMatch || !activeMatch.p1 || !activeMatch.p2) return;
+          audioManager.unlock();
+          audioManager.playUiClick();
+          requestLandscapeLock();
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur();
+          }
+          setMode('tournament');
+          setP1Fighter(activeMatch.p1.fighterId);
+          setP2Fighter(activeMatch.p2.fighterId);
+          setStage(tournamentState.stage);
+          setScreen('combat');
+        }}
+        onRestartSamePlayers={() => {
+          audioManager.playUiClick();
+          setTournamentState(
+            createTournamentBracket(tournamentState.participants, tournamentState.stage)
+          );
+        }}
+        onEditSetup={() => {
+          audioManager.playUiClick();
+          setScreen('tournament_setup');
+        }}
+        onExitMenu={() => {
           audioManager.playUiClick();
           setScreen('menu');
         }}
@@ -520,6 +619,11 @@ export default function App() {
       );
     }
 
+    const activeTournamentMatch =
+      mode === 'tournament' && tournamentState
+        ? getCurrentTournamentMatch(tournamentState)
+        : null;
+
     return (
       <CombatScreen
         mode={mode}
@@ -530,6 +634,33 @@ export default function App() {
         lanSlot={lanClient.getSlot() || 1}
         pingMs={pingMs}
         replayData={activeReplay}
+        tournamentContext={
+          mode === 'tournament' &&
+          tournamentState &&
+          activeTournamentMatch &&
+          activeTournamentMatch.p1 &&
+          activeTournamentMatch.p2
+            ? {
+                roundLabel: getTournamentRoundLabel(
+                  tournamentState.size,
+                  tournamentState.currentRoundIndex
+                ),
+                p1Label: activeTournamentMatch.p1.name,
+                p2Label: activeTournamentMatch.p2.name,
+                p1IsCpu: activeTournamentMatch.p1.isCpu,
+                p2IsCpu: activeTournamentMatch.p2.isCpu,
+                onAdvanceTournament: (winnerSlot, p1Rounds, p2Rounds) => {
+                  audioManager.playUiClick();
+                  setTournamentState((prev) =>
+                    prev
+                      ? recordTournamentMatchWinner(prev, winnerSlot, p1Rounds, p2Rounds)
+                      : prev
+                  );
+                  setScreen('tournament_bracket');
+                },
+              }
+            : null
+        }
         settings={settings}
         isPortrait={isPortrait}
         onUpdateSettings={setSettings}

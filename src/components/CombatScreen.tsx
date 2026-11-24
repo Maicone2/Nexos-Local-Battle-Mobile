@@ -65,6 +65,15 @@ import { MoveListModal } from './MoveListModal';
 import { ResultModal } from './ResultModal';
 import { DirectionalOutput, TouchJoystick } from './TouchJoystick';
 
+export interface TournamentMatchContext {
+  roundLabel: string;
+  p1Label: string;
+  p2Label: string;
+  p1IsCpu: boolean;
+  p2IsCpu: boolean;
+  onAdvanceTournament: (winnerSlot: 1 | 2, p1Rounds: number, p2Rounds: number) => void;
+}
+
 interface CombatScreenProps {
   mode: GameMode;
   stage: StageId;
@@ -74,6 +83,7 @@ interface CombatScreenProps {
   lanSlot?: 1 | 2;
   pingMs?: number;
   replayData?: MatchReplay | null;
+  tournamentContext?: TournamentMatchContext | null;
   settings: SettingsConfig;
   isPortrait: boolean;
   onUpdateSettings: (next: SettingsConfig) => void;
@@ -166,6 +176,7 @@ export function CombatScreen({
   lanSlot = 1,
   pingMs = 0,
   replayData = null,
+  tournamentContext = null,
   settings,
   isPortrait,
   onUpdateSettings,
@@ -243,6 +254,8 @@ export function CombatScreen({
         stage,
         p1Id: p1Fighter,
         p2Id: p2Fighter,
+        p1Name: tournamentContext?.p1Label,
+        p2Name: tournamentContext?.p2Label,
         trainingHpPercent: settings.trainingHpPercent,
         trainingInfiniteEnergy:
           mode === 'combo_trials' ? true : settings.trainingInfiniteEnergy,
@@ -422,6 +435,8 @@ export function CombatScreen({
       stage,
       p1Id: mode === 'combo_trials' ? trialFighter : p1Fighter,
       p2Id: p2Fighter,
+      p1Name: tournamentContext?.p1Label,
+      p2Name: tournamentContext?.p2Label,
       trainingHpPercent: settingsRef.current.trainingHpPercent,
       trainingInfiniteEnergy:
         mode === 'combo_trials' ? true : settingsRef.current.trainingInfiniteEnergy,
@@ -581,6 +596,7 @@ export function CombatScreen({
 
     const renderer = new GameRenderer();
     const bot = new BotAI();
+    const botP1 = new BotAI();
     let rafId = 0;
     let lastTime = performance.now();
     let accumulator = 0;
@@ -616,27 +632,30 @@ export function CombatScreen({
       const diagDownLeft = hasKey('KeyZ');
       const diagDownRight = hasKey('KeyC');
 
+      const allowP1ArrowAlias =
+        mode !== 'local2p' && !(mode === 'tournament' && tournamentContext && !tournamentContext.p2IsCpu);
+
       const left =
         hasKey('KeyA') ||
-        (mode !== 'local2p' && hasKey('ArrowLeft')) ||
+        (allowP1ArrowAlias && hasKey('ArrowLeft')) ||
         diagUpLeft ||
         diagDownLeft ||
         t.left;
       const right =
         hasKey('KeyD') ||
-        (mode !== 'local2p' && hasKey('ArrowRight')) ||
+        (allowP1ArrowAlias && hasKey('ArrowRight')) ||
         diagUpRight ||
         diagDownRight ||
         t.right;
       const up =
         hasKey('KeyW') ||
-        (mode !== 'local2p' && hasKey('ArrowUp')) ||
+        (allowP1ArrowAlias && hasKey('ArrowUp')) ||
         diagUpLeft ||
         diagUpRight ||
         t.up;
       const down =
         hasKey('KeyS') ||
-        (mode !== 'local2p' && hasKey('ArrowDown')) ||
+        (allowP1ArrowAlias && hasKey('ArrowDown')) ||
         diagDownLeft ||
         diagDownRight ||
         t.down ||
@@ -688,7 +707,7 @@ export function CombatScreen({
           inputHistoryRef.current = res.history;
           setInputHistory(res.history);
         }
-      } else if (mode === 'local2p' || isReplay) {
+      } else if (mode === 'local2p' || mode === 'tournament' || isReplay) {
         const res = appendInputHistory(
           p2InputHistoryRef.current,
           inp,
@@ -770,7 +789,15 @@ export function CombatScreen({
       } else if (!pausedRef.current) {
         accumulator += dt;
         while (accumulator >= FIXED_DT) {
-          const localIn = readP1Input();
+          const localIn =
+            mode === 'tournament' && tournamentContext?.p1IsCpu
+              ? botP1.computeInput(
+                  matchRef.current,
+                  settingsRef.current.botDifficulty,
+                  'cpu',
+                  1
+                )
+              : readP1Input();
           recordCommandHistory(localIn, mode === 'lan' ? lanSlot : 1, matchRef.current.tick);
 
           if (mode === 'lan') {
@@ -783,7 +810,7 @@ export function CombatScreen({
                     settingsRef.current.botDifficulty,
                     'standing'
                   )
-                : mode === 'vs_cpu'
+                : mode === 'vs_cpu' || (mode === 'tournament' && tournamentContext?.p2IsCpu)
                 ? bot.computeInput(
                     matchRef.current,
                     settingsRef.current.botDifficulty,
@@ -796,7 +823,7 @@ export function CombatScreen({
                     settingsRef.current.trainingDummyMode
                   )
                 : readP2LocalInput();
-            if (mode === 'local2p') {
+            if (mode === 'local2p' || (mode === 'tournament' && !tournamentContext?.p2IsCpu)) {
               recordCommandHistory(p2In, 2, matchRef.current.tick);
             }
             recorderRef.current.recordTick(localIn, p2In);
@@ -917,9 +944,11 @@ export function CombatScreen({
               <div className="flex items-center justify-between mb-0.5 px-1">
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="font-display text-base sm:text-lg md:text-2xl font-extrabold tracking-wide text-[#F4F7FB] leading-none">
-                    {hud.p1Name}
+                    {tournamentContext ? `${tournamentContext.p1Label} · ${hud.p1Name}` : hud.p1Name}
                   </span>
-                  <span className="text-[10px] sm:text-[11px] font-mono-tech text-[#00E5FF]">P1</span>
+                  <span className="text-[10px] sm:text-[11px] font-mono-tech text-[#00E5FF]">
+                    {tournamentContext?.p1IsCpu ? 'CPU' : 'P1'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1" aria-label={`Rondas vencidas Jogador 1: ${hud.p1Rounds}`}>
                   {[0, 1].map((idx) => (
@@ -996,10 +1025,14 @@ export function CombatScreen({
                 </div>
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-[10px] sm:text-[11px] font-mono-tech text-[#A855F7]">
-                    {mode === 'combo_trials' ? 'DUMMY' : mode === 'training' || mode === 'vs_cpu' ? 'CPU' : 'P2'}
+                    {mode === 'combo_trials'
+                      ? 'DUMMY'
+                      : mode === 'training' || mode === 'vs_cpu' || tournamentContext?.p2IsCpu
+                      ? 'CPU'
+                      : 'P2'}
                   </span>
                   <span className="font-display text-base sm:text-lg md:text-2xl font-extrabold tracking-wide text-[#F4F7FB] leading-none">
-                    {hud.p2Name}
+                    {tournamentContext ? `${tournamentContext.p2Label} · ${hud.p2Name}` : hud.p2Name}
                   </span>
                 </div>
               </div>
@@ -1818,14 +1851,25 @@ export function CombatScreen({
         <ResultModal
           winnerSlot={hud.winnerSlot || 1}
           localSlot={mode === 'lan' ? lanSlot : 1}
-          p1Name={hud.p1Name}
-          p2Name={hud.p2Name}
+          p1Name={tournamentContext ? tournamentContext.p1Label : hud.p1Name}
+          p2Name={tournamentContext ? tournamentContext.p2Label : hud.p2Name}
           p1Rounds={hud.p1Rounds}
           p2Rounds={hud.p2Rounds}
           maxCombo={Math.max(hud.p1MaxCombo, hud.p2MaxCombo)}
           damageDealt={hud.winnerSlot === 2 ? hud.p2DamageDealt : hud.p1DamageDealt}
           elapsedSeconds={hud.elapsedSeconds}
           isLan={mode === 'lan'}
+          tournamentRoundLabel={tournamentContext?.roundLabel}
+          onAdvanceTournament={
+            tournamentContext
+              ? () =>
+                  tournamentContext.onAdvanceTournament(
+                    hud.winnerSlot || 1,
+                    hud.p1Rounds,
+                    hud.p2Rounds
+                  )
+              : undefined
+          }
           canSaveReplay={recorderRef.current.getTickCount() > 0}
           replaySaved={replaySaved}
           onSaveReplay={handleSaveReplay}

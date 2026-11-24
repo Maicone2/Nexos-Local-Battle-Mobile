@@ -2,12 +2,14 @@ export type FighterId = 'kael' | 'vexa' | 'zane' | 'nyx';
 
 export type StageId = 'orbital_arena' | 'energy_dock' | 'cyber_temple' | 'reactor_core';
 
-export type GameMode = 'vs_cpu' | 'local2p' | 'training' | 'combo_trials' | 'lan';
+export type GameMode = 'vs_cpu' | 'local2p' | 'tournament' | 'training' | 'combo_trials' | 'lan';
 
 export type ScreenState =
   | 'title'
   | 'menu'
   | 'mode_select'
+  | 'tournament_setup'
+  | 'tournament_bracket'
   | 'lan_menu'
   | 'lobby'
   | 'char_select'

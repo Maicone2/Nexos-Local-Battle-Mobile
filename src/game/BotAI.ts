@@ -15,7 +15,8 @@ export class BotAI {
   computeInput(
     state: MatchState,
     difficulty: 'easy' | 'normal',
-    dummyMode: TrainingDummyMode = 'cpu'
+    dummyMode: TrainingDummyMode = 'cpu',
+    slot: 1 | 2 = 2
   ): InputState {
     if (state.phase !== 'fighting') {
       return { ...EMPTY_INPUT };
@@ -34,8 +35,8 @@ export class BotAI {
       }
     }
 
-    const bot = state.p2;
-    const player = state.p1;
+    const bot = slot === 1 ? state.p1 : state.p2;
+    const player = slot === 1 ? state.p2 : state.p1;
     const dx = player.x - bot.x;
     const dist = Math.abs(dx);
     const dirToPlayer = dx >= 0 ? 1 : -1;

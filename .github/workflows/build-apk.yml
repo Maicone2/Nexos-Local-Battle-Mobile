@@ -35,7 +35,9 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
 
       - name: Install Android 35 SDK & Build-Tools
         run: |
@@ -48,11 +50,11 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build Debug APK
-        if: github.event.inputs.build_type != 'release'
+        if: ${{ inputs.build_type != 'release' }}
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 
       - name: Build Release APK
-        if: github.event.inputs.build_type != 'debug'
+        if: ${{ inputs.build_type != 'debug' }}
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
       - name: Collect APK artifacts

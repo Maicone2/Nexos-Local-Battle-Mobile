@@ -523,6 +523,8 @@ export class GameRenderer {
             ? 'MODO DE TREINO'
             : state.mode === 'vs_cpu'
             ? 'VERSUS CPU'
+            : state.mode === 'tournament'
+            ? 'TORNEIO LOCAL'
             : state.mode === 'local2p'
             ? 'VERSUS 1V1 LOCAL'
             : 'ARENA LAN';
