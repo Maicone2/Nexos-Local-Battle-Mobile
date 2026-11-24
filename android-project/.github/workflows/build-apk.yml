@@ -1,0 +1,70 @@
+name: Build Android APK
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'APK build variant'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - debug
+          - release
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 35 SDK & Build-Tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build Debug APK
+        if: github.event.inputs.build_type != 'release'
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Build Release APK
+        if: github.event.inputs.build_type != 'debug'
+        run: gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect APK artifacts
+        run: |
+          mkdir -p output
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk output/neon-clash-arena-lan-debug.apk
+          fi
+          if [ -f app/build/outputs/apk/release/app-release-unsigned.apk ]; then
+            cp app/build/outputs/apk/release/app-release-unsigned.apk output/neon-clash-arena-lan-release-unsigned.apk
+          elif [ -f app/build/outputs/apk/release/app-release.apk ]; then
+            cp app/build/outputs/apk/release/app-release.apk output/neon-clash-arena-lan-release.apk
+          fi
+          ls -lh output/
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-clash-arena-lan-apk
+          path: output/*.apk
+          retention-days: 30

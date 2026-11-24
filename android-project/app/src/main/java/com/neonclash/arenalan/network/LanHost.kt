@@ -87,7 +87,8 @@ class LanHost(
                             light = parts[5] == "1",
                             heavy = parts[6] == "1",
                             special = parts[7] == "1",
-                            block = parts[8] == "1"
+                            block = parts[8] == "1",
+                            medium = parts.getOrNull(9) == "1"
                         )
                     )
                 }

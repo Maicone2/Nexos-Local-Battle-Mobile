@@ -1,10 +1,28 @@
-import { FIGHTER_PROFILES, STAGE_LEFT, STAGE_RIGHT } from './constants';
+import { FIGHTER_PROFILES, getMoveSpec, STAGE_LEFT, STAGE_RIGHT } from './constants';
 import { Box, FighterState, Projectile } from './types';
+
+export function isAttackAction(action: FighterState['action']): boolean {
+  return (
+    action === 'light' ||
+    action === 'medium' ||
+    action === 'heavy' ||
+    action === 'special' ||
+    action === 'ultimate'
+  );
+}
 
 export function getHurtbox(fighter: FighterState): Box {
   const profile = FIGHTER_PROFILES[fighter.id];
-  const height = fighter.crouching ? profile.crouchHeight : profile.hurtboxHeight;
-  const width = profile.hurtboxWidth;
+  let height = fighter.crouching ? profile.crouchHeight : profile.hurtboxHeight;
+  let width = profile.hurtboxWidth;
+
+  if (fighter.action === 'knockdown') {
+    height = 54;
+    width = 112;
+  } else if (fighter.action === 'dash_fwd' || fighter.action === 'dash_back') {
+    height = Math.round(profile.hurtboxHeight * 0.88);
+  }
+
   return {
     x: fighter.x - width / 2,
     y: fighter.y - height,
@@ -14,12 +32,11 @@ export function getHurtbox(fighter: FighterState): Box {
 }
 
 export function getActiveHitbox(fighter: FighterState): Box | null {
-  if (fighter.action !== 'light' && fighter.action !== 'heavy' && fighter.action !== 'special') {
+  if (!isAttackAction(fighter.action)) {
     return null;
   }
 
-  const profile = FIGHTER_PROFILES[fighter.id];
-  const spec = profile.attacks[fighter.action];
+  const spec = getMoveSpec(fighter.id, fighter.currentMove);
   const start = spec.startup;
   const end = spec.startup + spec.active;
 
@@ -27,8 +44,6 @@ export function getActiveHitbox(fighter: FighterState): Box | null {
     return null;
   }
 
-  // Projectile specials spawn an energy projectile rather than relying solely on melee box,
-  // though close-range point-blank startup also hits if overlapping.
   const boxX =
     fighter.facing === 1
       ? fighter.x + spec.hitboxOffsetX
@@ -60,7 +75,21 @@ export function boxesOverlap(a: Box, b: Box): boolean {
   );
 }
 
+function stageEdgeMargin(fighter: FighterState): number {
+  return fighter.action === 'knockdown' || fighter.action === 'defeat' ? 96 : 42;
+}
+
 export function resolvePushboxes(p1: FighterState, p2: FighterState): void {
+  const m1 = stageEdgeMargin(p1);
+  const m2 = stageEdgeMargin(p2);
+
+  // Knocked-down or defeated fighters pass smoothly without hard pushlock
+  if (p1.action === 'knockdown' || p2.action === 'knockdown' || p1.action === 'defeat' || p2.action === 'defeat') {
+    p1.x = Math.max(STAGE_LEFT + m1, Math.min(STAGE_RIGHT - m1, p1.x));
+    p2.x = Math.max(STAGE_LEFT + m2, Math.min(STAGE_RIGHT - m2, p2.x));
+    return;
+  }
+
   const w1 = FIGHTER_PROFILES[p1.id].hurtboxWidth;
   const w2 = FIGHTER_PROFILES[p2.id].hurtboxWidth;
   const minDist = (w1 + w2) * 0.45;
@@ -77,6 +106,6 @@ export function resolvePushboxes(p1: FighterState, p2: FighterState): void {
     }
   }
 
-  p1.x = Math.max(STAGE_LEFT + 28, Math.min(STAGE_RIGHT - 28, p1.x));
-  p2.x = Math.max(STAGE_LEFT + 28, Math.min(STAGE_RIGHT - 28, p2.x));
+  p1.x = Math.max(STAGE_LEFT + m1, Math.min(STAGE_RIGHT - m1, p1.x));
+  p2.x = Math.max(STAGE_LEFT + m2, Math.min(STAGE_RIGHT - m2, p2.x));
 }

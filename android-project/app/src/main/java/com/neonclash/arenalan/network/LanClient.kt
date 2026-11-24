@@ -90,7 +90,7 @@ class LanClient(
     fun sendInputUdp(input: InputPacket) {
         val addr = hostAddr ?: return
         seq++
-        val payload = "$seq|${b(input.left)}|${b(input.right)}|${b(input.up)}|${b(input.down)}|${b(input.light)}|${b(input.heavy)}|${b(input.special)}|${b(input.block)}"
+        val payload = "$seq|${b(input.left)}|${b(input.right)}|${b(input.up)}|${b(input.down)}|${b(input.light)}|${b(input.heavy)}|${b(input.special)}|${b(input.block)}|${b(input.medium)}"
         val bytes = payload.toByteArray()
         scope.launch {
             try {

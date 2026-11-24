@@ -16,7 +16,9 @@ export class AudioManager {
   unlock(): void {
     if (typeof window === 'undefined') return;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
@@ -35,16 +37,42 @@ export class AudioManager {
     for (const ev of events) {
       switch (ev.type) {
         case 'hit':
-          this.playImpact(170, 0.09, 0.35);
+          this.playImpact(195, 0.08, 0.34);
+          break;
+        case 'medium_hit':
+          this.playImpact(145, 0.11, 0.44);
           break;
         case 'heavy_hit':
-          this.playImpact(105, 0.16, 0.55);
+          this.playImpact(105, 0.16, 0.56);
+          break;
+        case 'ultimate':
+          this.playImpact(68, 0.32, 0.65);
+          this.playTone(320, 980, 0.35, 'sawtooth', 0.28);
           break;
         case 'block':
-          this.playTone(940, 620, 0.08, 'square', 0.25);
+          this.playTone(940, 620, 0.08, 'square', 0.24);
+          break;
+        case 'perfect_guard':
+          this.playTone(1240, 1680, 0.12, 'triangle', 0.32);
+          break;
+        case 'guard_break':
+          this.playTone(360, 120, 0.24, 'sawtooth', 0.38);
+          break;
+        case 'counter_hit':
+        case 'punish_counter':
+          this.playTone(720, 1140, 0.1, 'triangle', 0.24);
+          break;
+        case 'wall_bounce':
+          this.playImpact(88, 0.15, 0.48);
+          break;
+        case 'dash':
+          this.playTone(310, 520, 0.06, 'sine', 0.14);
           break;
         case 'special':
           this.playTone(260, 780, 0.24, 'sawtooth', 0.3);
+          break;
+        case 'charge':
+          this.playTone(340, 560, 0.1, 'sine', 0.11);
           break;
         case 'jump':
           this.playTone(210, 410, 0.09, 'sine', 0.16);

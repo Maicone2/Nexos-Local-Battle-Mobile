@@ -9,8 +9,20 @@ enum class ScreenRoute {
 
 enum class FighterId { KAEL, VEXA }
 enum class StageId { ORBITAL_ARENA, ENERGY_DOCK }
-enum class GameMode { TRAINING, LAN }
-enum class ActionState { IDLE, WALK_FWD, WALK_BACK, JUMP, CROUCH, LIGHT, HEAVY, SPECIAL, BLOCK, HITSTUN, STUNNED, VICTORY, DEFEAT }
+enum class GameMode { VS_CPU, TRAINING, LAN }
+enum class ActionState {
+    IDLE, WALK_FWD, WALK_BACK, DASH_FWD, DASH_BACK,
+    JUMP, DOUBLE_JUMP, CROUCH, CROUCH_WALK, LANDING,
+    LIGHT, MEDIUM, HEAVY, SPECIAL, ULTIMATE,
+    BLOCK, GUARD_BREAK, HITSTUN, KNOCKDOWN, STUNNED, VICTORY, DEFEAT
+}
+
+enum class MoveId {
+    STAND_LIGHT, STAND_MEDIUM, STAND_HEAVY,
+    CROUCH_SWEEP, CROUCH_UPPERCUT,
+    AIR_LIGHT, AIR_MEDIUM, AIR_HEAVY,
+    SPECIAL_PRIMARY, ULTIMATE_BURST
+}
 
 data class InputPacket(
     val left: Boolean = false,
@@ -18,6 +30,7 @@ data class InputPacket(
     val up: Boolean = false,
     val down: Boolean = false,
     val light: Boolean = false,
+    val medium: Boolean = false,
     val heavy: Boolean = false,
     val special: Boolean = false,
     val block: Boolean = false
@@ -38,9 +51,14 @@ data class FighterEntity(
     var energy: Int = 25,
     var maxEnergy: Int = 100,
     var stun: Float = 0f,
+    var guardMeter: Float = 100f,
     var action: ActionState = ActionState.IDLE,
+    var currentMove: MoveId? = null,
     var actionFrame: Int = 0,
+    var blockFrames: Int = 0,
     var stunTimer: Int = 0,
+    var knockdownTimer: Int = 0,
+    var airJumpsLeft: Int = if (id == FighterId.VEXA) 1 else 0,
     var hitFlashFrames: Int = 0,
     var hasHitCurrentAttack: Boolean = false,
     var comboCount: Int = 0,

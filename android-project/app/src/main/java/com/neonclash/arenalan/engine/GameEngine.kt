@@ -40,6 +40,7 @@ class GameEngine(
         m.roundNumber = 1
         m.p1.roundsWon = 0
         m.p2.roundsWon = 0
+        m.winnerSlot = null
         combatSystem.resetRound(m)
         m.p1.hp = m.p1.maxHp
         m.p2.hp = m.p2.maxHp
@@ -54,14 +55,37 @@ class GameEngine(
         gameLoop.stop()
     }
 
+    private fun computeBotInput(state: MatchSnapshot): InputPacket {
+        if (state.phase != "FIGHTING") return InputPacket()
+        val p1 = state.p1
+        val p2 = state.p2
+        val dx = p1.x - p2.x
+        val dist = kotlin.math.abs(dx)
+        val moveLeft = dx < -115f
+        val moveRight = dx > 115f
+        val shouldBlock = p1.action in listOf(ActionState.LIGHT, ActionState.MEDIUM, ActionState.HEAVY, ActionState.SPECIAL) &&
+            dist < 155f && (state.tick % 5 != 0)
+        val shouldAttack = dist < 128f && !shouldBlock && (state.tick % 24 == 0)
+        val useHeavy = shouldAttack && (state.tick % 48 == 0)
+        val useSpecial = dist in 135f..420f && p2.energy >= 50 && (state.tick % 90 == 0)
+        return InputPacket(
+            left = moveLeft,
+            right = moveRight,
+            light = shouldAttack && !useHeavy,
+            heavy = useHeavy,
+            special = useSpecial,
+            block = shouldBlock
+        )
+    }
+
     private fun tickSimulation() {
         val mode = stateManager.mode.value
         val state = stateManager.match
         val p1In = localInput.get()
-        val p2In = if (mode == GameMode.TRAINING) {
-            InputPacket() // Simple training dummy / CPU
-        } else {
-            remoteInput.get()
+        val p2In = when (mode) {
+            GameMode.TRAINING -> InputPacket()
+            GameMode.VS_CPU -> computeBotInput(state)
+            GameMode.LAN -> remoteInput.get()
         }
 
         if (mode == GameMode.LAN && !lanManager.isHost) {
@@ -85,7 +109,8 @@ class GameEngine(
             holder,
             stateManager.match,
             stateManager.selectedStage.value,
-            settingsManager.graphicsTier
+            settingsManager.graphicsTier,
+            settingsManager.showHitboxes
         )
     }
 

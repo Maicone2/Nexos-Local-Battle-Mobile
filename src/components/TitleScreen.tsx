@@ -85,14 +85,14 @@ export function TitleScreen({ onStart }: TitleScreenProps) {
         }}
       />
 
-      <div className="relative z-10 flex flex-col items-center justify-between w-full h-full px-6 py-8 md:py-12">
+      <div className="relative z-10 flex flex-col items-center justify-between w-full h-full px-4 py-3 sm:px-6 sm:py-6">
         <div />
 
         {/* Center Title Emblem over calm upper-center negative space */}
         <div className="flex flex-col items-center text-center max-w-2xl">
           <svg
             viewBox="0 0 640 155"
-            className="w-[310px] sm:w-[460px] md:w-[560px] h-auto drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
+            className="w-[260px] sm:w-[380px] md:w-[520px] max-h-[40vh] h-auto drop-shadow-[0_8px_24px_rgba(0,0,0,0.85)]"
             aria-label="NEON CLASH: ARENA LAN"
             role="img"
           >
@@ -143,16 +143,16 @@ export function TitleScreen({ onStart }: TitleScreenProps) {
             type="button"
             data-start="true"
             onClick={onStart}
-            className="mt-8 px-12 py-3.5 bg-[#00A8FF] hover:bg-[#33B9FF] active:scale-[0.98] text-[#07090D] font-display text-2xl font-extrabold tracking-widest uppercase transition-transform cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+            className="mt-4 sm:mt-6 px-10 py-2.5 sm:px-12 sm:py-3.5 bg-[#00A8FF] hover:bg-[#33B9FF] active:scale-[0.98] text-[#07090D] font-display text-xl sm:text-2xl font-extrabold tracking-widest uppercase transition-transform cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
             style={{ clipPath: 'polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%)' }}
           >
             INICIAR
           </button>
         </div>
 
-        {/* Single flat control-hint line (desktop only) */}
-        <p className="hidden lg:block text-sm text-[#94A3B8] tracking-wide text-center">
-          A/D Mover · W Saltar · S Agachar · J Ligeiro · K Pesado · L Especial · U Defesa · Enter Iniciar
+        {/* Single flat control-hint line */}
+        <p className="text-[11px] sm:text-xs text-[#94A3B8] tracking-wide text-center">
+          Joystick Diagonal / WASD · J Ligeiro · H Médio · K Pesado · L Especial · U Defesa · Enter Iniciar
         </p>
       </div>
     </main>

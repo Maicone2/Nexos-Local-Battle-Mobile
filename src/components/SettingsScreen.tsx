@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
 import { DEFAULT_SETTINGS } from '../game/constants';
-import { GraphicsQuality, SettingsConfig } from '../game/types';
+import { GraphicsQuality, SettingsConfig, TrainingDummyMode } from '../game/types';
 
 interface SettingsScreenProps {
   settings: SettingsConfig;
@@ -16,38 +16,42 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
     });
   };
 
+  const updateHud = (patch: Partial<SettingsConfig['hudConfig']>) => {
+    onUpdate({
+      ...settings,
+      hudConfig: { ...settings.hudConfig, ...patch },
+    });
+  };
+
   return (
-    <main className="w-full h-full bg-[#07090D] flex flex-col justify-between px-6 py-5 md:px-12 md:py-8 overflow-y-auto">
+    <main className="w-full h-full bg-[#07090D] flex flex-col justify-between px-4 py-2 sm:px-6 sm:py-3 md:px-10 md:py-4 overflow-hidden">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-wide text-[#F4F7FB]">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-wide text-[#F4F7FB] leading-none">
             DEFINIÇÕES
           </h1>
-          <p className="text-sm text-[#94A3B8]">
-            Otimização de desempenho, áudio, modo de treino e posição dos controlos táteis
+          <p className="text-[11px] sm:text-xs text-[#94A3B8]">
+            Desempenho, sensibilidade, modo de treino, joystick diagonal e Custom HUD
           </p>
         </div>
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#10151F] border border-white/15 hover:border-[#00A8FF] text-sm font-semibold text-[#F4F7FB] cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#10151F] border border-white/15 hover:border-[#00A8FF] text-xs sm:text-sm font-semibold text-[#F4F7FB] cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-3.5 h-3.5" />
           Voltar
         </button>
       </div>
 
-      <div className="my-auto py-4 max-w-5xl w-full mx-auto grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Performance & Audio */}
-        <section className="bg-[#10151F] border border-white/10 p-5 space-y-5">
+      <div className="my-auto py-1 max-w-6xl w-full mx-auto grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-4">
+        {/* Performance, Combat & Training */}
+        <section className="bg-[#10151F] border border-white/10 p-2.5 md:p-4 space-y-2">
           <div>
-            <h2 className="font-display text-2xl font-bold text-[#F4F7FB]">
-              GRÁFICOS E BATERIA
+            <h2 className="font-display text-lg md:text-2xl font-bold text-[#F4F7FB] leading-none">
+              GRÁFICOS E CÂMARA
             </h2>
-            <p className="text-xs text-[#94A3B8] mt-1">
-              Reduz efeitos visuais em dispositivos de gama baixa para manter 60 FPS
-            </p>
-            <div className="grid grid-cols-3 gap-2 mt-3">
+            <div className="grid grid-cols-3 gap-1.5 mt-1.5">
               {([
                 { id: 'high', label: 'Alto' },
                 { id: 'medium', label: 'Médio' },
@@ -57,7 +61,7 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
                   key={q.id}
                   type="button"
                   onClick={() => onUpdate({ ...settings, graphicsQuality: q.id })}
-                  className={`py-2.5 text-sm font-bold border cursor-pointer ${
+                  className={`py-1 md:py-1.5 text-xs font-bold border cursor-pointer ${
                     settings.graphicsQuality === q.id
                       ? 'bg-[#00A8FF] text-[#07090D] border-[#00A8FF]'
                       : 'bg-[#07090D] text-[#F4F7FB] border-white/15'
@@ -67,11 +71,52 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
                 </button>
               ))}
             </div>
+
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <div>
+                <div className="flex justify-between text-[11px] text-[#94A3B8] mb-0.5">
+                  <span>Vibração Câmara</span>
+                  <span className="font-mono-tech text-[#F4F7FB]">
+                    {Math.round(settings.cameraShakeLevel * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={1.5}
+                  step={0.1}
+                  value={settings.cameraShakeLevel}
+                  onChange={(e) =>
+                    onUpdate({ ...settings, cameraShakeLevel: Number(e.target.value) })
+                  }
+                  className="w-full accent-[#00A8FF]"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-[11px] text-[#94A3B8] mb-0.5">
+                  <span>Buffer Comandos</span>
+                  <span className="font-mono-tech text-[#F4F7FB]">
+                    {settings.inputBufferFrames}f
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={4}
+                  max={16}
+                  step={1}
+                  value={settings.inputBufferFrames}
+                  onChange={(e) =>
+                    onUpdate({ ...settings, inputBufferFrames: Number(e.target.value) })
+                  }
+                  className="w-full accent-[#00A8FF]"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="border-t border-white/10 pt-4 space-y-3">
-            <h2 className="font-display text-2xl font-bold text-[#F4F7FB]">ÁUDIO E TREINO</h2>
-            <label className="flex items-center justify-between text-sm text-[#F4F7FB]">
+          <div className="border-t border-white/10 pt-2 space-y-1.5">
+            <h2 className="font-display text-lg md:text-2xl font-bold text-[#F4F7FB] leading-none">ÁUDIO E TREINO</h2>
+            <label className="flex items-center justify-between text-xs text-[#F4F7FB]">
               <span>Silenciar Efeitos Sonoros</span>
               <input
                 type="checkbox"
@@ -81,7 +126,31 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
               />
             </label>
 
-            <label className="flex items-center justify-between text-sm text-[#F4F7FB]">
+            <div>
+              <div className="text-[11px] text-[#94A3B8] mb-1">Adversário (Treino)</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  { id: 'standing', label: 'Parado' },
+                  { id: 'guard', label: 'Em Defesa' },
+                  { id: 'cpu', label: 'CPU Ativa' },
+                ] as { id: TrainingDummyMode; label: string }[]).map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => onUpdate({ ...settings, trainingDummyMode: d.id })}
+                    className={`py-1 text-[11px] font-bold border cursor-pointer ${
+                      settings.trainingDummyMode === d.id
+                        ? 'bg-[#00A8FF] text-[#07090D] border-[#00A8FF]'
+                        : 'bg-[#07090D] text-[#F4F7FB] border-white/15'
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex items-center justify-between text-xs text-[#F4F7FB]">
               <span>Treino: Energia Especial Infinita</span>
               <input
                 type="checkbox"
@@ -93,7 +162,7 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
               />
             </label>
 
-            <label className="flex items-center justify-between text-sm text-[#F4F7FB]">
+            <label className="flex items-center justify-between text-xs text-[#F4F7FB]">
               <span>Treino: Regenerar Vida Após Combo</span>
               <input
                 type="checkbox"
@@ -102,53 +171,60 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
                 className="w-4 h-4 accent-[#00A8FF]"
               />
             </label>
-
-            <div>
-              <div className="flex justify-between text-xs text-[#94A3B8] mb-1">
-                <span>Treino: Vida Inicial</span>
-                <span className="font-mono-tech text-[#F4F7FB]">{settings.trainingHpPercent}%</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={200}
-                step={25}
-                value={settings.trainingHpPercent}
-                onChange={(e) =>
-                  onUpdate({ ...settings, trainingHpPercent: Number(e.target.value) })
-                }
-                className="w-full accent-[#00A8FF]"
-              />
-            </div>
           </div>
         </section>
 
-        {/* Touch Control Position & Scale Customizer */}
-        <section className="bg-[#10151F] border border-white/10 p-5 space-y-4">
+        {/* Touch Control & Custom HUD */}
+        <section className="bg-[#10151F] border border-white/10 p-2.5 md:p-4 space-y-1.5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-display text-2xl font-bold text-[#F4F7FB]">
-                CONTROLOS TÁTEIS
+              <h2 className="font-display text-lg md:text-2xl font-bold text-[#F4F7FB] leading-none">
+                JOYSTICK & CUSTOM HUD
               </h2>
-              <p className="text-xs text-[#94A3B8]">
-                Ajusta o tamanho e posição dos botões no ecrã
+              <p className="text-[10px] md:text-[11px] text-[#94A3B8]">
+                Diagonais no joystick, opacidade, escala e visualizadores
               </p>
             </div>
-            <label className="flex items-center gap-2 text-xs text-[#F4F7FB]">
+            <label className="flex items-center gap-1.5 text-[11px] md:text-xs text-[#F4F7FB]">
               <input
                 type="checkbox"
                 checked={settings.touchLayout.enabled}
                 onChange={(e) => updateTouch({ enabled: e.target.checked })}
-                className="w-4 h-4 accent-[#00A8FF]"
+                className="w-3.5 h-3.5 accent-[#00A8FF]"
               />
-              Mostrar Botões
+              Botões Táteis
             </label>
           </div>
 
-          <div className="space-y-3 pt-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => updateTouch({ controlStyle: 'joystick' })}
+              className={`py-1 md:py-1.5 text-[11px] md:text-xs font-bold border cursor-pointer ${
+                settings.touchLayout.controlStyle === 'joystick'
+                  ? 'bg-[#00A8FF] text-[#07090D] border-[#00A8FF]'
+                  : 'bg-[#07090D] text-[#F4F7FB] border-white/15'
+              }`}
+            >
+              Joystick 360° (Diagonais)
+            </button>
+            <button
+              type="button"
+              onClick={() => updateTouch({ controlStyle: 'dpad8' })}
+              className={`py-1 md:py-1.5 text-[11px] md:text-xs font-bold border cursor-pointer ${
+                settings.touchLayout.controlStyle === 'dpad8'
+                  ? 'bg-[#00A8FF] text-[#07090D] border-[#00A8FF]'
+                  : 'bg-[#07090D] text-[#F4F7FB] border-white/15'
+              }`}
+            >
+              Pad 8-Direções
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
             <div>
-              <div className="flex justify-between text-xs text-[#94A3B8] mb-1">
-                <span>Tamanho dos Botões</span>
+              <div className="flex justify-between text-[11px] text-[#94A3B8]">
+                <span>Tamanho Botões</span>
                 <span className="font-mono-tech text-[#F4F7FB]">
                   {Math.round(settings.touchLayout.scale * 100)}%
                 </span>
@@ -163,83 +239,129 @@ export function SettingsScreen({ settings, onUpdate, onBack }: SettingsScreenPro
                 className="w-full accent-[#00A8FF]"
               />
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <div className="flex justify-between text-xs text-[#94A3B8] mb-1">
-                  <span>Movimento X</span>
-                  <span className="font-mono-tech">{settings.touchLayout.leftOffsetX}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={-40}
-                  max={80}
-                  step={5}
-                  value={settings.touchLayout.leftOffsetX}
-                  onChange={(e) => updateTouch({ leftOffsetX: Number(e.target.value) })}
-                  className="w-full accent-[#00A8FF]"
-                />
+            <div>
+              <div className="flex justify-between text-[11px] text-[#94A3B8]">
+                <span>Escala HUD</span>
+                <span className="font-mono-tech text-[#F4F7FB]">
+                  {Math.round(settings.hudConfig.hudScale * 100)}%
+                </span>
               </div>
-              <div>
-                <div className="flex justify-between text-xs text-[#94A3B8] mb-1">
-                  <span>Movimento Y</span>
-                  <span className="font-mono-tech">{settings.touchLayout.leftOffsetY}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={-60}
-                  max={20}
-                  step={5}
-                  value={settings.touchLayout.leftOffsetY}
-                  onChange={(e) => updateTouch({ leftOffsetY: Number(e.target.value) })}
-                  className="w-full accent-[#00A8FF]"
-                />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs text-[#94A3B8] mb-1">
-                  <span>Ataques X</span>
-                  <span className="font-mono-tech">{settings.touchLayout.rightOffsetX}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={-80}
-                  max={40}
-                  step={5}
-                  value={settings.touchLayout.rightOffsetX}
-                  onChange={(e) => updateTouch({ rightOffsetX: Number(e.target.value) })}
-                  className="w-full accent-[#00A8FF]"
-                />
-              </div>
-              <div>
-                <div className="flex justify-between text-xs text-[#94A3B8] mb-1">
-                  <span>Ataques Y</span>
-                  <span className="font-mono-tech">{settings.touchLayout.rightOffsetY}px</span>
-                </div>
-                <input
-                  type="range"
-                  min={-60}
-                  max={20}
-                  step={5}
-                  value={settings.touchLayout.rightOffsetY}
-                  onChange={(e) => updateTouch({ rightOffsetY: Number(e.target.value) })}
-                  className="w-full accent-[#00A8FF]"
-                />
-              </div>
+              <input
+                type="range"
+                min={0.8}
+                max={1.15}
+                step={0.05}
+                value={settings.hudConfig.hudScale}
+                onChange={(e) => updateHud({ hudScale: Number(e.target.value) })}
+                className="w-full accent-[#00A8FF]"
+              />
             </div>
+            <div>
+              <div className="flex justify-between text-[11px] text-[#94A3B8]">
+                <span>Opacidade Tátil</span>
+                <span className="font-mono-tech text-[#F4F7FB]">
+                  {Math.round(settings.touchLayout.opacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.35}
+                max={1.0}
+                step={0.05}
+                value={settings.touchLayout.opacity}
+                onChange={(e) => updateTouch({ opacity: Number(e.target.value) })}
+                className="w-full accent-[#00A8FF]"
+              />
+            </div>
+            <div>
+              <div className="flex justify-between text-[11px] text-[#94A3B8]">
+                <span>Opacidade HUD</span>
+                <span className="font-mono-tech text-[#F4F7FB]">
+                  {Math.round(settings.hudConfig.hudOpacity * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0.5}
+                max={1.0}
+                step={0.05}
+                value={settings.hudConfig.hudOpacity}
+                onChange={(e) => updateHud({ hudOpacity: Number(e.target.value) })}
+                className="w-full accent-[#00A8FF]"
+              />
+            </div>
+          </div>
 
+          <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-[11px] pt-0.5">
+            <label className="flex items-center gap-1.5 text-[#F4F7FB]">
+              <input
+                type="checkbox"
+                checked={settings.hudConfig.showInputHistory}
+                onChange={(e) => updateHud({ showInputHistory: e.target.checked })}
+                className="accent-[#00A8FF]"
+              />
+              Histórico
+            </label>
+            <label className="flex items-center gap-1.5 text-[#F4F7FB]">
+              <input
+                type="checkbox"
+                checked={settings.hudConfig.showFrameData}
+                onChange={(e) => updateHud({ showFrameData: e.target.checked })}
+                className="accent-[#00A8FF]"
+              />
+              Frame Data
+            </label>
+            <label className="flex items-center gap-1.5 text-[#F4F7FB]">
+              <input
+                type="checkbox"
+                checked={settings.hudConfig.showHitboxes}
+                onChange={(e) => updateHud({ showHitboxes: e.target.checked })}
+                className="accent-[#00A8FF]"
+              />
+              Hitboxes
+            </label>
+            <label className="flex items-center gap-1.5 text-[#F4F7FB]">
+              <input
+                type="checkbox"
+                checked={settings.hudConfig.showComboMeter}
+                onChange={(e) => updateHud({ showComboMeter: e.target.checked })}
+                className="accent-[#00A8FF]"
+              />
+              Combos
+            </label>
+            <label className="flex items-center gap-1.5 text-[#F4F7FB]">
+              <input
+                type="checkbox"
+                checked={settings.hudConfig.showCombatLog}
+                onChange={(e) => updateHud({ showCombatLog: e.target.checked })}
+                className="accent-[#00A8FF]"
+              />
+              Combat Log
+            </label>
             <button
               type="button"
-              onClick={() => updateTouch(DEFAULT_SETTINGS.touchLayout)}
-              className="mt-2 px-4 py-2 bg-[#07090D] border border-white/15 hover:border-[#00A8FF] text-xs font-semibold text-[#F4F7FB] cursor-pointer"
+              onClick={() =>
+                onUpdate({
+                  ...settings,
+                  cameraShakeLevel: DEFAULT_SETTINGS.cameraShakeLevel,
+                  inputBufferFrames: DEFAULT_SETTINGS.inputBufferFrames,
+                  touchLayout: {
+                    ...DEFAULT_SETTINGS.touchLayout,
+                    controls: { ...DEFAULT_SETTINGS.touchLayout.controls },
+                  },
+                  hudConfig: { ...DEFAULT_SETTINGS.hudConfig },
+                })
+              }
+              className="px-2 py-0.5 bg-[#07090D] border border-white/15 hover:border-[#00A8FF] text-[11px] font-semibold text-[#F4F7FB] cursor-pointer"
             >
-              Repor Posição Padrão
+              Repor Padrão
             </button>
           </div>
         </section>
       </div>
 
-      <div className="text-xs text-[#64748B]">
-        As definições são guardadas localmente no dispositivo.
+      <div className="text-[11px] text-[#64748B] truncate">
+        Teclas Diagonais: Q (↖) · E (↗) · Z (↙) · C (↘) · J Ligeiro · H Médio · K Pesado · L Especial · U Defesa · R +Energia · J+U Especial · J+K Rasteira
       </div>
     </main>
   );

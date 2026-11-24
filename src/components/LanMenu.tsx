@@ -25,6 +25,7 @@ export function LanMenu({
   const [localIps, setLocalIps] = useState<string[]>([]);
   const [localPort, setLocalPort] = useState<number>(3000);
   const [discoveredRooms, setDiscoveredRooms] = useState<LanRoomSummary[]>([]);
+  const [roomsPage, setRoomsPage] = useState(0);
   const [scanning, setScanning] = useState(false);
 
   const fetchLanInfoAndRooms = async () => {
@@ -56,33 +57,38 @@ export function LanMenu({
     return () => window.clearInterval(id);
   }, []);
 
+  const pageSize = 3;
+  const totalRoomPages = Math.max(1, Math.ceil(discoveredRooms.length / pageSize));
+  const safeRoomPage = Math.min(roomsPage, totalRoomPages - 1);
+  const visibleRooms = discoveredRooms.slice(safeRoomPage * pageSize, safeRoomPage * pageSize + pageSize);
+
   return (
-    <main className="w-full h-full bg-[#07090D] flex flex-col justify-between px-6 py-5 md:px-12 md:py-8 overflow-y-auto">
+    <main className="w-full h-full bg-[#07090D] flex flex-col justify-between px-4 py-2 sm:px-6 sm:py-3 md:px-10 md:py-4 overflow-hidden">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold tracking-wide text-[#F4F7FB]">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-wide text-[#F4F7FB] leading-none">
             MULTIPLAYER POR LAN
           </h1>
-          <p className="text-sm text-[#94A3B8]">
+          <p className="text-[11px] sm:text-xs text-[#94A3B8]">
             Combate em rede local Wi-Fi ou Hotspot sem dependência de Internet externa
           </p>
         </div>
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-[#10151F] border border-white/15 hover:border-[#00A8FF] text-sm font-semibold text-[#F4F7FB] cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#10151F] border border-white/15 hover:border-[#00A8FF] text-xs sm:text-sm font-semibold text-[#F4F7FB] cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-3.5 h-3.5" />
           Voltar
         </button>
       </div>
 
-      <div className="my-auto py-4 max-w-6xl w-full mx-auto space-y-5">
+      <div className="my-auto py-1 max-w-6xl w-full mx-auto space-y-2 md:space-y-4">
         {/* Player Name & Local Network Info Strip */}
-        <div className="bg-[#10151F] border border-white/10 p-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <label htmlFor="lan-player-name" className="text-xs font-semibold text-[#94A3B8] uppercase">
-              Nome do Jogador
+        <div className="bg-[#10151F] border border-white/10 px-3 py-2 md:p-3.5 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <label htmlFor="lan-player-name" className="text-[11px] font-semibold text-[#94A3B8] uppercase">
+              Jogador
             </label>
             <input
               id="lan-player-name"
@@ -90,10 +96,10 @@ export function LanMenu({
               value={playerName}
               maxLength={18}
               onChange={(e) => setPlayerName(e.target.value)}
-              className="px-3 py-1.5 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-sm text-[#F4F7FB] outline-none"
+              className="px-2.5 py-1 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-xs sm:text-sm text-[#F4F7FB] outline-none"
             />
           </div>
-          <div className="text-xs font-mono-tech text-[#94A3B8]">
+          <div className="text-[11px] font-mono-tech text-[#94A3B8]">
             IPv4 Local:{' '}
             <span className="text-[#00A8FF] font-bold">
               {localIps.length > 0 ? localIps[0] : '127.0.0.1'}
@@ -105,25 +111,25 @@ export function LanMenu({
         {errorMsg && (
           <div
             role="alert"
-            className="p-3 bg-[#2B1216] border border-[#EF4444]/60 text-sm text-[#FCA5A5]"
+            className="px-3 py-1.5 bg-[#2B1216] border border-[#EF4444]/60 text-xs text-[#FCA5A5]"
           >
             {errorMsg}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 md:gap-4 items-stretch">
           {/* Create Room */}
-          <section className="lg:col-span-4 bg-[#10151F] border border-white/10 p-5 flex flex-col justify-between">
+          <section className="sm:col-span-4 bg-[#10151F] border border-white/10 p-3 md:p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 text-[#00A8FF]">
-                <Server className="w-5 h-5" />
-                <h2 className="font-display text-2xl font-bold text-[#F4F7FB]">CRIAR SALA</h2>
+                <Server className="w-4 h-4 md:w-5 md:h-5" />
+                <h2 className="font-display text-xl md:text-2xl font-bold text-[#F4F7FB]">CRIAR SALA</h2>
               </div>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
-                Este dispositivo atua como anfitrião autoritário a 60 ticks por segundo. Partilha o IP ou código de sala com o segundo jogador na mesma rede Wi-Fi/Hotspot.
+              <p className="text-[11px] md:text-xs text-[#94A3B8] mt-1 leading-snug">
+                Este dispositivo atua como anfitrião a 60 Hz na mesma rede Wi-Fi/Hotspot.
               </p>
-              <div className="mt-4 p-3 bg-[#07090D] border border-white/10 text-xs font-mono-tech space-y-1">
-                <div className="text-[#94A3B8]">Endereço de Ligação:</div>
+              <div className="mt-2 p-2 bg-[#07090D] border border-white/10 text-[11px] font-mono-tech">
+                <div className="text-[#94A3B8]">Endereço:</div>
                 <div className="text-[#00A8FF] font-bold">
                   {localIps[0] || '127.0.0.1'}:{localPort}
                 </div>
@@ -134,14 +140,14 @@ export function LanMenu({
               type="button"
               disabled={status === 'connecting'}
               onClick={() => onCreateRoom(playerName.trim() || 'Anfitrião')}
-              className="mt-5 w-full py-3.5 bg-[#00A8FF] hover:bg-[#33B9FF] disabled:opacity-50 text-[#07090D] font-display text-xl font-extrabold tracking-wider uppercase cursor-pointer"
+              className="mt-2.5 w-full py-2 md:py-3 bg-[#00A8FF] hover:bg-[#33B9FF] disabled:opacity-50 text-[#07090D] font-display text-lg md:text-xl font-extrabold tracking-wider uppercase cursor-pointer"
             >
               {status === 'connecting' ? 'A INICIAR...' : 'CRIAR SALA LAN'}
             </button>
           </section>
 
           {/* Auto-Discovery Rooms */}
-          <section className="lg:col-span-4 bg-[#10151F] border border-white/10 p-5 flex flex-col justify-between">
+          <section className="sm:col-span-4 bg-[#10151F] border border-white/10 p-3 md:p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-[#00E5FF]">
@@ -163,64 +169,86 @@ export function LanMenu({
                 Procura automática de partidas ativas na rede local
               </p>
 
-              <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
+              <div className="mt-3 space-y-2 overflow-hidden">
                 {discoveredRooms.length === 0 ? (
                   <div className="p-4 bg-[#07090D] border border-white/5 text-xs text-[#64748B] text-center">
                     Nenhuma sala aberta encontrada de momento.
                   </div>
                 ) : (
-                  discoveredRooms.map((room) => (
-                    <div
-                      key={room.roomId}
-                      className="p-3 bg-[#07090D] border border-white/10 flex items-center justify-between gap-2"
-                    >
-                      <div>
-                        <div className="text-sm font-bold text-[#F4F7FB]">
-                          Sala {room.roomId} · {room.hostName}
-                        </div>
-                        <div className="text-xs font-mono-tech text-[#94A3B8]">
-                          {room.hostIp}:{room.port} · {room.playerCount}/{room.maxPlayers}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={room.playerCount >= 2}
-                        onClick={() =>
-                          onJoinRoom(
-                            room.roomId,
-                            playerName.trim() || 'Desafiante',
-                            '',
-                            room.port
-                          )
-                        }
-                        className="px-3 py-1.5 bg-[#00A8FF] hover:bg-[#33B9FF] disabled:opacity-40 text-[#07090D] text-xs font-bold uppercase cursor-pointer"
+                  <>
+                    {visibleRooms.map((room) => (
+                      <div
+                        key={room.roomId}
+                        className="p-2.5 bg-[#07090D] border border-white/10 flex items-center justify-between gap-2"
                       >
-                        Entrar
-                      </button>
-                    </div>
-                  ))
+                        <div>
+                          <div className="text-sm font-bold text-[#F4F7FB]">
+                            Sala {room.roomId} · {room.hostName}
+                          </div>
+                          <div className="text-xs font-mono-tech text-[#94A3B8]">
+                            {room.hostIp}:{room.port} · {room.playerCount}/{room.maxPlayers}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          disabled={room.playerCount >= 2}
+                          onClick={() =>
+                            onJoinRoom(
+                              room.roomId,
+                              playerName.trim() || 'Desafiante',
+                              '',
+                              room.port
+                            )
+                          }
+                          className="px-3 py-1.5 bg-[#00A8FF] hover:bg-[#33B9FF] disabled:opacity-40 text-[#07090D] text-xs font-bold uppercase cursor-pointer"
+                        >
+                          Entrar
+                        </button>
+                      </div>
+                    ))}
+                    {totalRoomPages > 1 && (
+                      <div className="flex items-center justify-between pt-1 text-[11px] font-mono-tech text-[#94A3B8]">
+                        <button
+                          type="button"
+                          disabled={safeRoomPage === 0}
+                          onClick={() => setRoomsPage((p) => Math.max(0, p - 1))}
+                          className="px-2 py-0.5 bg-[#07090D] border border-white/15 disabled:opacity-40 cursor-pointer"
+                        >
+                          ← Ant.
+                        </button>
+                        <span>
+                          Pág {safeRoomPage + 1}/{totalRoomPages}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={safeRoomPage >= totalRoomPages - 1}
+                          onClick={() => setRoomsPage((p) => Math.min(totalRoomPages - 1, p + 1))}
+                          className="px-2 py-0.5 bg-[#07090D] border border-white/15 disabled:opacity-40 cursor-pointer"
+                        >
+                          Próx. →
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
           </section>
 
           {/* Manual IP / Port / Room Join */}
-          <section className="lg:col-span-4 bg-[#10151F] border border-white/10 p-5 flex flex-col justify-between">
+          <section className="sm:col-span-4 bg-[#10151F] border border-white/10 p-3 md:p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 text-[#A855F7]">
-                <LogIn className="w-5 h-5" />
-                <h2 className="font-display text-2xl font-bold text-[#F4F7FB]">
+                <LogIn className="w-4 h-4 md:w-5 md:h-5" />
+                <h2 className="font-display text-xl md:text-2xl font-bold text-[#F4F7FB]">
                   ENTRAR NA SALA
                 </h2>
               </div>
-              <p className="text-xs text-[#94A3B8] mt-1">
-                Ligação manual por endereço IP, porta e código
-              </p>
 
-              <div className="mt-4 space-y-3">
+              <div className="mt-2 space-y-2">
                 <div>
-                  <label htmlFor="lan-ip" className="block text-xs text-[#94A3B8] mb-1">
-                    Endereço IP do Anfitrião (opcional no mesmo servidor)
+                  <label htmlFor="lan-ip" className="block text-[10px] text-[#94A3B8] mb-0.5">
+                    Endereço IP do Anfitrião
                   </label>
                   <input
                     id="lan-ip"
@@ -228,13 +256,13 @@ export function LanMenu({
                     placeholder="Ex: 192.168.1.42"
                     value={hostIpInput}
                     onChange={(e) => setHostIpInput(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-sm font-mono-tech text-[#F4F7FB] outline-none"
+                    className="w-full px-2.5 py-1.5 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-xs font-mono-tech text-[#F4F7FB] outline-none"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label htmlFor="lan-port" className="block text-xs text-[#94A3B8] mb-1">
+                    <label htmlFor="lan-port" className="block text-[10px] text-[#94A3B8] mb-0.5">
                       Porta
                     </label>
                     <input
@@ -242,21 +270,21 @@ export function LanMenu({
                       type="number"
                       value={portInput}
                       onChange={(e) => setPortInput(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-sm font-mono-tech text-[#F4F7FB] outline-none"
+                      className="w-full px-2.5 py-1.5 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-xs font-mono-tech text-[#F4F7FB] outline-none"
                     />
                   </div>
                   <div>
-                    <label htmlFor="lan-room-code" className="block text-xs text-[#94A3B8] mb-1">
-                      Código da Sala
+                    <label htmlFor="lan-room-code" className="block text-[10px] text-[#94A3B8] mb-0.5">
+                      Código
                     </label>
                     <input
                       id="lan-room-code"
                       type="text"
-                      placeholder="Ex: A7K2"
+                      placeholder="A7K2"
                       value={roomCodeInput}
                       maxLength={6}
                       onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
-                      className="w-full px-3 py-2 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-sm font-mono-tech text-[#F4F7FB] uppercase outline-none"
+                      className="w-full px-2.5 py-1.5 bg-[#07090D] border border-white/15 focus:border-[#00A8FF] text-xs font-mono-tech text-[#F4F7FB] uppercase outline-none"
                     />
                   </div>
                 </div>
@@ -274,9 +302,9 @@ export function LanMenu({
                   Number(portInput) || 3000
                 )
               }
-              className="mt-5 w-full py-3.5 bg-[#A855F7] hover:bg-[#B86FF9] disabled:opacity-50 text-white font-display text-xl font-extrabold tracking-wider uppercase cursor-pointer"
+              className="mt-2.5 w-full py-2 md:py-3 bg-[#A855F7] hover:bg-[#B86FF9] disabled:opacity-50 text-white font-display text-lg md:text-xl font-extrabold tracking-wider uppercase cursor-pointer"
             >
-              {status === 'connecting' ? 'A LIGAR...' : 'LIGAR À SALA'}
+              {status === 'connecting' ? 'A LIGAR...' : 'ENTRAR NA PARTIDA LAN'}
             </button>
           </section>
         </div>

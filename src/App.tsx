@@ -1,17 +1,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AboutScreen } from './components/AboutScreen';
+import { CharacterCustomizerModal } from './components/CharacterCustomizerModal';
 import { CharacterSelect } from './components/CharacterSelect';
 import { CombatScreen } from './components/CombatScreen';
 import { LanMenu } from './components/LanMenu';
 import { LobbyScreen } from './components/LobbyScreen';
 import { MainMenu } from './components/MainMenu';
 import { ModeSelect } from './components/ModeSelect';
+import { MoveListModal } from './components/MoveListModal';
+import { ReplayModal } from './components/ReplayModal';
 import { SettingsScreen } from './components/SettingsScreen';
 import { StageSelect } from './components/StageSelect';
 import { TitleScreen } from './components/TitleScreen';
 import { audioManager } from './game/AudioManager';
-import { DEFAULT_SETTINGS } from './game/constants';
+import {
+  DEFAULT_FIGHTER_APPEARANCE,
+  DEFAULT_SETTINGS,
+  DEFAULT_TOUCH_CONTROLS,
+} from './game/constants';
 import { lanClient, LanConnectionStatus } from './game/LanClient';
+import { loadReplays, MatchReplay } from './game/replayStorage';
+import {
+  loadLocalSessionStats,
+  LocalSessionRecord,
+  recordLocalMatchResult,
+  resetLocalSessionStats,
+  saveLocalSessionStats,
+} from './game/sessionStats';
 import {
   FighterId,
   GameMode,
@@ -20,6 +35,7 @@ import {
   ScreenState,
   SettingsConfig,
   StageId,
+  TouchControlId,
 } from './game/types';
 
 const SETTINGS_STORAGE_KEY = 'neon_clash_settings_v1';
@@ -29,12 +45,35 @@ function loadSettings(): SettingsConfig {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
+    const parsedControls = parsed?.touchLayout?.controls || {};
+    const mergedControls = { ...DEFAULT_TOUCH_CONTROLS };
+    (Object.keys(DEFAULT_TOUCH_CONTROLS) as TouchControlId[]).forEach((id) => {
+      mergedControls[id] = {
+        ...DEFAULT_TOUCH_CONTROLS[id],
+        ...(parsedControls[id] || {}),
+      };
+    });
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
       touchLayout: {
         ...DEFAULT_SETTINGS.touchLayout,
         ...(parsed.touchLayout || {}),
+        controls: mergedControls,
+      },
+      hudConfig: {
+        ...DEFAULT_SETTINGS.hudConfig,
+        ...(parsed.hudConfig || {}),
+      },
+      fighterCustomizations: {
+        p1: {
+          ...DEFAULT_FIGHTER_APPEARANCE,
+          ...(parsed?.fighterCustomizations?.p1 || {}),
+        },
+        p2: {
+          ...DEFAULT_FIGHTER_APPEARANCE,
+          ...(parsed?.fighterCustomizations?.p2 || {}),
+        },
       },
     };
   } catch {
@@ -54,6 +93,14 @@ export default function App() {
   const [p2Fighter, setP2Fighter] = useState<FighterId>('vexa');
   const [stage, setStage] = useState<StageId>('orbital_arena');
   const [settings, setSettings] = useState<SettingsConfig>(loadSettings);
+  const [activeReplay, setActiveReplay] = useState<MatchReplay | null>(null);
+  const [showReplaysModal, setShowReplaysModal] = useState(false);
+  const [showMoveListModal, setShowMoveListModal] = useState(false);
+  const [customizerSlot, setCustomizerSlot] = useState<1 | 2 | null>(null);
+  const [replayCount, setReplayCount] = useState(() => loadReplays().length);
+  const [localSessionStats, setLocalSessionStats] = useState<LocalSessionRecord>(() =>
+    loadLocalSessionStats()
+  );
 
   // LAN state
   const [lanStatus, setLanStatus] = useState<LanConnectionStatus>('disconnected');
@@ -111,6 +158,9 @@ export default function App() {
     } else {
       document.body.dataset.state = 'menu';
     }
+    if (screen === 'menu') {
+      setReplayCount(loadReplays().length);
+    }
   }, [screen]);
 
   const wireLanCallbacks = useCallback(() => {
@@ -125,6 +175,7 @@ export default function App() {
         setScreen((prev) => (prev === 'lan_menu' ? 'lobby' : prev));
       },
       onMatchState: (state) => {
+        setActiveReplay(null);
         setLanMatchState(state);
         setP1Fighter(state.p1.id);
         setP2Fighter(state.p2.id);
@@ -143,12 +194,27 @@ export default function App() {
     setSettings((prev) => ({ ...prev, muted: !prev.muted }));
   }, []);
 
+  const handleLocalMatchEnd = useCallback((winnerSlot: 1 | 2) => {
+    setLocalSessionStats((prev) => {
+      const next = recordLocalMatchResult(prev, winnerSlot);
+      saveLocalSessionStats(next);
+      return next;
+    });
+  }, []);
+
+  const handleResetLocalSession = useCallback(() => {
+    audioManager.playUiClick();
+    setLocalSessionStats(resetLocalSessionStats());
+  }, []);
+
   const handleExitToMenu = useCallback(() => {
     if (mode === 'lan') {
       lanClient.disconnect();
       setLobby(null);
       setLanMatchState(null);
     }
+    setActiveReplay(null);
+    setReplayCount(loadReplays().length);
     setScreen('menu');
   }, [mode]);
 
@@ -193,34 +259,94 @@ export default function App() {
 
   if (screen === 'menu') {
     return (
-      <MainMenu
-        onPlay={() => {
-          audioManager.playUiClick();
-          setScreen('mode_select');
-        }}
-        onLan={() => {
-          audioManager.playUiClick();
-          setMode('lan');
-          setScreen('lan_menu');
-        }}
-        onTraining={() => {
-          audioManager.playUiClick();
-          setMode('training');
-          setScreen('char_select');
-        }}
-        onSettings={() => {
-          audioManager.playUiClick();
-          setScreen('settings');
-        }}
-        onAbout={() => {
-          audioManager.playUiClick();
-          setScreen('about');
-        }}
-        onBackTitle={() => {
-          audioManager.playUiClick();
-          setScreen('title');
-        }}
-      />
+      <>
+        <MainMenu
+          onPlay={() => {
+            audioManager.playUiClick();
+            setActiveReplay(null);
+            setScreen('mode_select');
+          }}
+          onLan={() => {
+            audioManager.playUiClick();
+            setActiveReplay(null);
+            setMode('lan');
+            setScreen('lan_menu');
+          }}
+          onTraining={() => {
+            audioManager.playUiClick();
+            setActiveReplay(null);
+            setMode('training');
+            setScreen('char_select');
+          }}
+          onComboTrials={() => {
+            audioManager.playUiClick();
+            setActiveReplay(null);
+            setMode('combo_trials');
+            setScreen('char_select');
+          }}
+          onCustomize={() => {
+            audioManager.playUiClick();
+            setCustomizerSlot(1);
+          }}
+          onReplays={() => {
+            audioManager.playUiClick();
+            setShowReplaysModal(true);
+          }}
+          onMoveList={() => {
+            audioManager.playUiClick();
+            setShowMoveListModal(true);
+          }}
+          replayCount={replayCount}
+          localSessionStats={localSessionStats}
+          onResetLocalSession={handleResetLocalSession}
+          onSettings={() => {
+            audioManager.playUiClick();
+            setScreen('settings');
+          }}
+          onAbout={() => {
+            audioManager.playUiClick();
+            setScreen('about');
+          }}
+          onBackTitle={() => {
+            audioManager.playUiClick();
+            setScreen('title');
+          }}
+        />
+        {showReplaysModal && (
+          <ReplayModal
+            onWatchReplay={(replay) => {
+              audioManager.unlock();
+              audioManager.playUiClick();
+              setShowReplaysModal(false);
+              setActiveReplay(replay);
+              setMode(replay.mode);
+              setP1Fighter(replay.p1Id);
+              setP2Fighter(replay.p2Id);
+              setStage(replay.stage);
+              setScreen('combat');
+            }}
+            onClose={() => {
+              setShowReplaysModal(false);
+              setReplayCount(loadReplays().length);
+            }}
+          />
+        )}
+        {showMoveListModal && (
+          <MoveListModal onClose={() => setShowMoveListModal(false)} />
+        )}
+        {customizerSlot !== null && (
+          <CharacterCustomizerModal
+            p1Fighter={p1Fighter}
+            p2Fighter={p2Fighter}
+            initialSlot={customizerSlot}
+            customizations={settings.fighterCustomizations}
+            onChange={(nextCustom) =>
+              setSettings((prev) => ({ ...prev, fighterCustomizations: nextCustom }))
+            }
+            onClose={() => setCustomizerSlot(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -291,28 +417,57 @@ export default function App() {
 
   if (screen === 'char_select') {
     return (
-      <CharacterSelect
-        p1Fighter={p1Fighter}
-        p2Fighter={p2Fighter}
-        isLan={mode === 'lan'}
-        localSlot={lanClient.getSlot() || 1}
-        onSelectP1={(id) => {
-          audioManager.playUiClick();
-          setP1Fighter(id);
-        }}
-        onSelectP2={(id) => {
-          audioManager.playUiClick();
-          setP2Fighter(id);
-        }}
-        onContinue={() => {
-          audioManager.playUiClick();
-          setScreen('stage_select');
-        }}
-        onBack={() => {
-          audioManager.playUiClick();
-          setScreen('mode_select');
-        }}
-      />
+      <>
+        <CharacterSelect
+          p1Fighter={p1Fighter}
+          p2Fighter={p2Fighter}
+          isLan={mode === 'lan'}
+          isTrialsMode={mode === 'combo_trials'}
+          localSlot={lanClient.getSlot() || 1}
+          customizations={settings.fighterCustomizations}
+          onSelectP1={(id) => {
+            audioManager.playUiClick();
+            setP1Fighter(id);
+          }}
+          onSelectP2={(id) => {
+            audioManager.playUiClick();
+            setP2Fighter(id);
+          }}
+          onOpenCustomize={(slot) => {
+            audioManager.playUiClick();
+            setCustomizerSlot(slot);
+          }}
+          onContinue={() => {
+            audioManager.playUiClick();
+            setScreen('stage_select');
+          }}
+          onStartDirect={() => {
+            audioManager.unlock();
+            audioManager.playUiClick();
+            requestLandscapeLock();
+            if (document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            setScreen('combat');
+          }}
+          onBack={() => {
+            audioManager.playUiClick();
+            setScreen('mode_select');
+          }}
+        />
+        {customizerSlot !== null && (
+          <CharacterCustomizerModal
+            p1Fighter={p1Fighter}
+            p2Fighter={p2Fighter}
+            initialSlot={customizerSlot}
+            customizations={settings.fighterCustomizations}
+            onChange={(nextCustom) =>
+              setSettings((prev) => ({ ...prev, fighterCustomizations: nextCustom }))
+            }
+            onClose={() => setCustomizerSlot(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -374,8 +529,12 @@ export default function App() {
         lanInitialState={lanMatchState}
         lanSlot={lanClient.getSlot() || 1}
         pingMs={pingMs}
+        replayData={activeReplay}
         settings={settings}
+        isPortrait={isPortrait}
+        onUpdateSettings={setSettings}
         onToggleMute={handleToggleMute}
+        onLocalMatchEnd={handleLocalMatchEnd}
         onChangeCharacters={() => {
           audioManager.playUiClick();
           setScreen('char_select');

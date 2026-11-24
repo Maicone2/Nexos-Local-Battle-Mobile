@@ -5,7 +5,7 @@ import android.view.SurfaceHolder
 import com.neonclash.arenalan.state.GraphicsTier
 import com.neonclash.arenalan.state.MatchSnapshot
 import com.neonclash.arenalan.state.StageId
-import kotlin.math.max
+import kotlin.math.min
 
 class GameRenderer {
     private val animationSystem = AnimationSystem()
@@ -16,6 +16,12 @@ class GameRenderer {
         strokeWidth = 1.5f
     }
     private val projPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f
+    }
+    private val hurtRect = RectF()
+    private val hitRect = RectF()
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = 68f
@@ -23,7 +29,13 @@ class GameRenderer {
         typeface = Typeface.DEFAULT_BOLD
     }
 
-    fun renderFrame(holder: SurfaceHolder, state: MatchSnapshot, stage: StageId, tier: GraphicsTier) {
+    fun renderFrame(
+        holder: SurfaceHolder,
+        state: MatchSnapshot,
+        stage: StageId,
+        tier: GraphicsTier,
+        showHitboxes: Boolean = false
+    ) {
         val canvas: Canvas = try {
             holder.lockCanvas() ?: return
         } catch (_: Exception) {
@@ -33,7 +45,7 @@ class GameRenderer {
         try {
             val w = canvas.width.toFloat()
             val h = canvas.height.toFloat()
-            val scale = max(w / 1280f, h / 720f)
+            val scale = min(w / 1280f, h / 720f)
             val ox = (w - 1280f * scale) / 2f
             val oy = (h - 720f * scale) / 2f
 
@@ -42,20 +54,18 @@ class GameRenderer {
             canvas.translate(ox, oy)
             canvas.scale(scale, scale)
 
-            // Sky & Backdrop
             bgPaint.color = if (stage == StageId.ORBITAL_ARENA) Color.parseColor("#0B111E") else Color.parseColor("#110E1E")
-            canvas.drawRect(0f, 0f, 1280f, 566f, bgPaint)
+            canvas.drawRect(-460f, -180f, 1740f, 566f, bgPaint)
 
-            // 2.5D Perspective Floor
             floorPaint.color = Color.parseColor("#090D16")
-            canvas.drawRect(0f, 566f, 1280f, 720f, floorPaint)
+            canvas.drawRect(-460f, 566f, 1740f, 1080f, floorPaint)
             gridPaint.color = if (stage == StageId.ORBITAL_ARENA) Color.parseColor("#00A8FF") else Color.parseColor("#A855F7")
-            canvas.drawLine(0f, 566f, 1280f, 566f, gridPaint)
+            canvas.drawLine(-460f, 566f, 1740f, 566f, gridPaint)
 
             if (tier != GraphicsTier.LOW) {
                 gridPaint.alpha = 55
-                for (i in -6..6) {
-                    canvas.drawLine(640f + i * 95f, 566f, 640f + i * 210f, 720f, gridPaint)
+                for (i in -10..10) {
+                    canvas.drawLine(640f + i * 95f, 566f, 640f + i * 210f, 1080f, gridPaint)
                 }
                 gridPaint.alpha = 255
             }
@@ -64,7 +74,15 @@ class GameRenderer {
             animationSystem.drawFighter(canvas, state.p1, timeSec, tier == GraphicsTier.HIGH)
             animationSystem.drawFighter(canvas, state.p2, timeSec, tier == GraphicsTier.HIGH)
 
-            // Projectiles (Pulso Solar)
+            if (showHitboxes) {
+                boxPaint.color = Color.parseColor("#00E5FF")
+                CollisionSystem.getHurtbox(state.p1, hurtRect); canvas.drawRect(hurtRect, boxPaint)
+                CollisionSystem.getHurtbox(state.p2, hurtRect); canvas.drawRect(hurtRect, boxPaint)
+                boxPaint.color = Color.parseColor("#EF4444")
+                if (CollisionSystem.getActiveHitbox(state.p1, hitRect)) canvas.drawRect(hitRect, boxPaint)
+                if (CollisionSystem.getActiveHitbox(state.p2, hitRect)) canvas.drawRect(hitRect, boxPaint)
+            }
+
             for (proj in state.projectiles) {
                 projPaint.color = Color.parseColor("#00E5FF")
                 canvas.drawCircle(proj.x, proj.y, proj.radius, projPaint)

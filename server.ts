@@ -15,6 +15,17 @@ const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.PORT || 3000);
 
+const VALID_FIGHTERS: FighterId[] = ['kael', 'vexa', 'zane', 'nyx'];
+const VALID_STAGES: StageId[] = ['orbital_arena', 'energy_dock', 'cyber_temple', 'reactor_core'];
+
+function normalizeFighterId(val: unknown): FighterId {
+  return VALID_FIGHTERS.includes(val as FighterId) ? (val as FighterId) : 'kael';
+}
+
+function normalizeStageId(val: unknown): StageId {
+  return VALID_STAGES.includes(val as StageId) ? (val as StageId) : 'orbital_arena';
+}
+
 function getLocalIpv4Addresses(): string[] {
   const nets = os.networkInterfaces();
   const ips: string[] = [];
@@ -140,11 +151,10 @@ function startRoomMatch(room: LanRoom): void {
   const tickMs = Math.round(1000 / FIXED_FPS);
   room.loopTimer = setInterval(() => {
     if (!room.matchState) return;
-    stepMatchSimulation(
-      room.matchState,
-      room.p1.input,
-      room.p2 ? room.p2.input : EMPTY_INPUT
-    );
+    const p1In = { ...room.p1.input };
+    const p2In = room.p2 ? { ...room.p2.input } : { ...EMPTY_INPUT };
+    stepMatchSimulation(room.matchState, p1In, p2In);
+    room.matchState.lastInputs = [p1In, p2In];
     room.broadcastTick++;
     // Send authoritative state at 30Hz (every 2 ticks) or immediately on combat events
     const hasEvent = room.matchState.events.length > 0;
@@ -164,9 +174,11 @@ function sanitizeInput(raw: unknown): InputState {
     up: Boolean(obj.up),
     down: Boolean(obj.down),
     light: Boolean(obj.light),
+    medium: Boolean(obj.medium),
     heavy: Boolean(obj.heavy),
     special: Boolean(obj.special),
     block: Boolean(obj.block),
+    charge: Boolean(obj.charge),
   };
 }
 
@@ -285,7 +297,7 @@ async function startServer() {
         cleanupSocket(ws);
         const roomId = generateRoomId();
         const playerName = String(msg.playerName || 'Anfitrião').slice(0, 18);
-        const stage: StageId = msg.stage === 'energy_dock' ? 'energy_dock' : 'orbital_arena';
+        const stage: StageId = normalizeStageId(msg.stage);
 
         const room: LanRoom = {
           roomId,
@@ -387,12 +399,12 @@ async function startServer() {
           broadcastLobby(room);
           break;
         case 'select_fighter':
-          client.fighter = msg.fighter === 'vexa' ? 'vexa' : 'kael';
+          client.fighter = normalizeFighterId(msg.fighter);
           broadcastLobby(room);
           break;
         case 'select_stage':
           if (meta.slot === 1) {
-            room.stage = msg.stage === 'energy_dock' ? 'energy_dock' : 'orbital_arena';
+            room.stage = normalizeStageId(msg.stage);
             broadcastLobby(room);
           }
           break;
